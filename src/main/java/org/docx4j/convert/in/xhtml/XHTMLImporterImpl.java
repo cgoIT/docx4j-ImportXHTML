@@ -61,6 +61,7 @@ import org.docx4j.model.properties.paragraph.AbstractParagraphProperty;
 import org.docx4j.model.properties.paragraph.Indent;
 import org.docx4j.model.properties.run.AbstractRunProperty;
 import org.docx4j.model.properties.run.FontSize;
+import org.docx4j.model.styles.StyleUtil;
 import org.docx4j.openpackaging.exceptions.Docx4JException;
 import org.docx4j.openpackaging.exceptions.InvalidFormatException;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
@@ -80,6 +81,7 @@ import org.docx4j.org.xhtmlrenderer.newtable.TableBox;
 import org.docx4j.org.xhtmlrenderer.render.AnonymousBlockBox;
 import org.docx4j.org.xhtmlrenderer.render.BlockBox;
 import org.docx4j.org.xhtmlrenderer.render.Box;
+import org.docx4j.org.xhtmlrenderer.render.BoxDimensions;
 import org.docx4j.org.xhtmlrenderer.render.InlineBox;
 import org.docx4j.org.xhtmlrenderer.resource.XMLResource;
 import org.docx4j.wml.Body;
@@ -1687,6 +1689,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 		
 		// support max-width eg 10px
 		int oldMaxWidth = -1;
+		boolean resetOldMaxWidth = false;
 		if (xHTMLImageHandler instanceof XHTMLImageHandlerDefault) {
 			oldMaxWidth = ((XHTMLImageHandlerDefault)xHTMLImageHandler).getMaxWidth();
 			if (!box.getStyle().isMaxWidthNone()) {
@@ -1696,21 +1699,31 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 				if (maxWidth>0) {
 					((XHTMLImageHandlerDefault)xHTMLImageHandler)
 						.setMaxWidth( (int) dotsToTwip(maxWidth));
+					resetOldMaxWidth = true;
 				}
 			}
 		}
-		
-		Long cy = contentBounds.height==0 ? null : 
-			UnitsOfMeasurement.twipToEMU( dotsToTwip(contentBounds.height) );
-		Long cx = contentBounds.width==0 ? null : 
-			UnitsOfMeasurement.twipToEMU( dotsToTwip(contentBounds.width) );
-		
-		xHTMLImageHandler.addImage( renderer.getDocx4jUserAgent(), wordMLPackage, 
+
+		Long cy = null;
+		Long cx = null;
+		if (!resetOldMaxWidth) {
+			if (box.getWidth() > 0) {
+				((XHTMLImageHandlerDefault)xHTMLImageHandler).setMaxWidth(box.getWidth());
+				resetOldMaxWidth = true;
+			} else {
+				cy = contentBounds.height==0 ? null :
+						UnitsOfMeasurement.twipToEMU( dotsToTwip(contentBounds.height) );
+				cx = contentBounds.width==0 ? null :
+						UnitsOfMeasurement.twipToEMU( dotsToTwip(contentBounds.width) );
+			}
+		}
+
+		xHTMLImageHandler.addImage( renderer.getDocx4jUserAgent(), wordMLPackage,
 				this.getCurrentParagraph(true), box.getElement(), cx, cy);
-		
+
+
 		// reset maxWidth
-		if ( (xHTMLImageHandler instanceof XHTMLImageHandlerDefault) 
-			&& !box.getStyle().isMaxWidthNone()) {
+		if (xHTMLImageHandler instanceof XHTMLImageHandlerDefault && resetOldMaxWidth) {
 			((XHTMLImageHandlerDefault)xHTMLImageHandler).setMaxWidth(oldMaxWidth);
 		}
 	}
@@ -2436,13 +2449,27 @@ public class XHTMLImporterImpl implements XHTMLImporter {
     	// since such direct formatting is probably not the author's intent,
     	// and makes the document less maintainable
     	RPr styleRPr = null;
+        PPr stylePPr = null;
     	PropertyResolver propertyResolver = this.wordMLPackage.getMainDocumentPart().getPropertyResolver();
     	if (pStyleId!=null) {
     		
     		styleRPr = propertyResolver.getEffectiveRPr(pStyleId);
     		if (styleRPr!=null) {
-    			RPrCleanser.removeRedundantProperties(styleRPr, rPr);
+    			// copy the styleRPr-Values to the rPr
+				StyleUtilExtended.clearStyle(rPr);
+				StyleUtil.apply(styleRPr, rPr);
+    			//RPrCleanser.removeRedundantProperties(styleRPr, rPr);
     		}
+    		stylePPr = propertyResolver.getEffectivePPr(pStyleId);
+    		PPr pPr = null;
+    		try {
+    			pPr = this.getCurrentParagraph(false).getPPr();
+			} catch (NullPointerException ex) {}
+    		if (stylePPr!=null) {
+    			StyleUtilExtended.clearStyle(pPr);
+    			StyleUtil.apply(stylePPr, pPr);
+			}
+
     		// Works nicely, except for color.  TODO: look into that
     	}
     	// Repeat the process for overlap with run level styles,
@@ -2451,7 +2478,9 @@ public class XHTMLImporterImpl implements XHTMLImporter {
     		
     		String styleId = rPr.getRStyle().getVal();
     		styleRPr = propertyResolver.getEffectiveRPr(styleId);
-    		RPrCleanser.removeRedundantProperties(styleRPr, rPr);
+			StyleUtilExtended.clearStyle(rPr);
+    		StyleUtil.apply(styleRPr, rPr);
+    		//RPrCleanser.removeRedundantProperties(styleRPr, rPr);
     	}
     	
     	// TODO: cleansing in table context

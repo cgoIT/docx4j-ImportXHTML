@@ -71,7 +71,7 @@ public class FontHandler {
 	
 	protected static void setRFont(CSSValue fontFamily, RPr rpr) {
 		
-		if (fontFamily==null) return;
+		if (fontFamily==null || rpr.getRFonts()!=null) return;
 //		log.debug(fontFamily.getCssText());
 		
 		// Short circuit

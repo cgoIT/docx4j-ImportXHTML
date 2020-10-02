@@ -1,34 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	
-  <parent>
-    <groupId>org.sonatype.oss</groupId>
-    <artifactId>oss-parent</artifactId>
-    <version>9</version>
-  </parent>
-	
+
+	<parent>
+		<groupId>org.sonatype.oss</groupId>
+		<artifactId>oss-parent</artifactId>
+		<version>9</version>
+	</parent>
+
 	<groupId>org.docx4j</groupId>
 	<artifactId>docx4j-ImportXHTML</artifactId>
 	<name>docx4j-ImportXHTML</name>
-	<version>8.0.1-SNAPSHOT</version>
+	<version>8.0.0-patched</version>
 	<description>
-		docx4j-ImportXHTML converts XHTML to OpenXML WordML (docx) using docx4j 
+		docx4j-ImportXHTML converts XHTML to OpenXML WordML (docx) using docx4j
 	</description>
 	<url>http://www.docx4java.org/</url>
 	<licenses>
-	  <license>
-	    <name>LGPL v2.1</name>
-	    <url>http://www.gnu.org/licenses/lgpl-2.1.html</url>
-	    <distribution>repo</distribution>
-	    <comments>The same license as Flying Saucer.  See legals/NOTICE for details.</comments>
-	  </license>
-  	</licenses>
+		<license>
+			<name>LGPL v2.1</name>
+			<url>http://www.gnu.org/licenses/lgpl-2.1.html</url>
+			<distribution>repo</distribution>
+			<comments>The same license as Flying Saucer.  See legals/NOTICE for details.</comments>
+		</license>
+	</licenses>
 	<scm>
-	    <developerConnection>scm:git|git@github.com:plutext/docx4j-ImportXHTML.git</developerConnection>
-      <tag>HEAD</tag>
-  </scm>
+		<developerConnection>scm:git|git@github.com:cgoIT/docx4j-ImportXHTML.git</developerConnection>
+		<tag>HEAD</tag>
+	</scm>
 	<inceptionYear>2013</inceptionYear>
+	<distributionManagement>
+		<repository>
+			<id>bintray-maven-repo</id>
+			<name>cgoit-maven</name>
+			<url>https://api.bintray.com/maven/cgoit/maven/docx4j-ImportXHTML/;publish=1</url>
+		</repository>
+	</distributionManagement>
 	<developers>
 		<developer>
 			<id>jharrop</id>
@@ -56,16 +63,11 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<docx4j.version>8.2.1</docx4j.version>
 	</properties>
-	  	
+
 	<build>
-		<sourceDirectory>src/main/java</sourceDirectory>
-		<testSourceDirectory>src/test/java</testSourceDirectory>
-		<outputDirectory>bin</outputDirectory> <!--  bin-mvn -->
-		<testOutputDirectory>bin-testOutput</testOutputDirectory>
 		<plugins>
-		
-		
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>build-helper-maven-plugin</artifactId>
@@ -99,38 +101,38 @@
 				<artifactId>maven-dependency-plugin</artifactId>
 			</plugin>
 
-	     <plugin>
-	        <groupId>org.apache.maven.plugins</groupId>
-	        <artifactId>maven-enforcer-plugin</artifactId>
-	        <version>3.0.0-M2</version> 
-	        <executions>
-	          <execution>
-	            <id>enforce-bytecode-version</id>
-	            <goals>
-	              <goal>enforce</goal>
-	            </goals>
-	            <configuration>
-	              <rules>
-	                <enforceBytecodeVersion>
-	                  <maxJdkVersion>1.8</maxJdkVersion>
-	                  <excludes>
-	                    <exclude>org.mindrot:jbcrypt</exclude>
-	                  </excludes>
-	                </enforceBytecodeVersion>
-	              </rules>
-	              <fail>true</fail>
-	            </configuration>
-	          </execution>
-	        </executions>
-	        <dependencies>
-	          <dependency>
-	            <groupId>org.codehaus.mojo</groupId>
-	            <artifactId>extra-enforcer-rules</artifactId>
-	            <version>1.2</version>
-	          </dependency>
-	        </dependencies>
-	      </plugin>			
-			 			
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-enforcer-plugin</artifactId>
+				<version>3.0.0-M2</version>
+				<executions>
+					<execution>
+						<id>enforce-bytecode-version</id>
+						<goals>
+							<goal>enforce</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<enforceBytecodeVersion>
+									<maxJdkVersion>1.8</maxJdkVersion>
+									<excludes>
+										<exclude>org.mindrot:jbcrypt</exclude>
+									</excludes>
+								</enforceBytecodeVersion>
+							</rules>
+							<fail>true</fail>
+						</configuration>
+					</execution>
+				</executions>
+				<dependencies>
+					<dependency>
+						<groupId>org.codehaus.mojo</groupId>
+						<artifactId>extra-enforcer-rules</artifactId>
+						<version>1.2</version>
+					</dependency>
+				</dependencies>
+			</plugin>
+
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
@@ -175,7 +177,7 @@
 				<version>2.8</version>
 				<configuration>
 					<maxmemory>512m</maxmemory>
-			        <additionalparam>-Xdoclint:none</additionalparam> <!-- for Java 8 -->					
+					<additionalparam>-Xdoclint:none</additionalparam> <!-- for Java 8 -->
 				</configuration>
 				<executions>
 					<execution>
@@ -186,8 +188,8 @@
 					</execution>
 				</executions>
 			</plugin>
-			
- 			<!--  mvn versions:display-dependency-updates -->
+
+			<!--  mvn versions:display-dependency-updates -->
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>versions-maven-plugin</artifactId>
@@ -195,72 +197,72 @@
 				<configuration>
 					<rulesUri>file:///${project.basedir}/rules.xml</rulesUri>
 				</configuration>
-			</plugin> 
-			
-		</plugins>
-		
-	<pluginManagement>
-		<plugins>
-
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-release-plugin</artifactId>
-				<version>2.5.3</version>
-				<configuration>
-					<mavenExecutorId>forked-path</mavenExecutorId>
-					<useReleaseProfile>false</useReleaseProfile>
-					<arguments>${arguments} -Psonatype-oss-release</arguments>
-				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-resources-plugin</artifactId>
-				<version>3.1.0</version>
 			</plugin>
 
-			<plugin>
-				<groupId>org.eclipse.m2e</groupId>
-				<artifactId>lifecycle-mapping</artifactId>
-				<version>1.0.0</version>
-				<configuration>
-					<lifecycleMappingMetadata>
-						<pluginExecutions>
-							<pluginExecution>
-								<pluginExecutionFilter>
-									<groupId>org.codehaus.mojo</groupId>
-									<artifactId>build-helper-maven-plugin</artifactId>
-									<versionRange>[1.3,2.0)</versionRange>
-									<goals>
-										<goal>add-source</goal>
-									</goals>
-								</pluginExecutionFilter>
-								<action>
-									<execute>
-										<runOnIncremental>true</runOnIncremental>
-									</execute>
-								</action>
-							</pluginExecution>
-							<pluginExecution>
-								<pluginExecutionFilter>
-									<groupId>org.codehaus.mojo</groupId>
-									<artifactId>flatten-maven-plugin</artifactId>
-									<versionRange>[1.0.0,)</versionRange>
-									<goals>
-										<goal>flatten</goal>
-										<goal>clean</goal>
-									</goals>
-								</pluginExecutionFilter>
-								<action>
-									<ignore />
-								</action>
-							</pluginExecution>
-						</pluginExecutions>
-					</lifecycleMappingMetadata>
-				</configuration>
-			</plugin>
 		</plugins>
-	</pluginManagement> 
-	   
+
+		<pluginManagement>
+			<plugins>
+
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-release-plugin</artifactId>
+					<version>2.5.3</version>
+					<configuration>
+						<mavenExecutorId>forked-path</mavenExecutorId>
+						<useReleaseProfile>false</useReleaseProfile>
+						<arguments>${arguments} -Psonatype-oss-release</arguments>
+					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-resources-plugin</artifactId>
+					<version>3.1.0</version>
+				</plugin>
+
+				<plugin>
+					<groupId>org.eclipse.m2e</groupId>
+					<artifactId>lifecycle-mapping</artifactId>
+					<version>1.0.0</version>
+					<configuration>
+						<lifecycleMappingMetadata>
+							<pluginExecutions>
+								<pluginExecution>
+									<pluginExecutionFilter>
+										<groupId>org.codehaus.mojo</groupId>
+										<artifactId>build-helper-maven-plugin</artifactId>
+										<versionRange>[1.3,2.0)</versionRange>
+										<goals>
+											<goal>add-source</goal>
+										</goals>
+									</pluginExecutionFilter>
+									<action>
+										<execute>
+											<runOnIncremental>true</runOnIncremental>
+										</execute>
+									</action>
+								</pluginExecution>
+								<pluginExecution>
+									<pluginExecutionFilter>
+										<groupId>org.codehaus.mojo</groupId>
+										<artifactId>flatten-maven-plugin</artifactId>
+										<versionRange>[1.0.0,)</versionRange>
+										<goals>
+											<goal>flatten</goal>
+											<goal>clean</goal>
+										</goals>
+									</pluginExecutionFilter>
+									<action>
+										<ignore />
+									</action>
+								</pluginExecution>
+							</pluginExecutions>
+						</lifecycleMappingMetadata>
+					</configuration>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+
 		<resources>
 			<!-- be sure to get xml,xlst resources in various src trees -->
 			<resource>
@@ -277,7 +279,7 @@
 					<include>XhtmlNamespaceHandler.css</include>
 					<include>xhtmlrenderer.conf</include>
 				</includes>
-			
+
 			</resource>
 			<!-- <resource> <directory>src/test/resources</directory> <excludes> <exclude>*.docx</exclude>
 				</excludes> </resource> -->
@@ -315,44 +317,27 @@
 			</plugin>
 		</plugins>
 	</reporting>
-	
+
 	<dependencies>
-	
+
 		<dependency>
 			<groupId>org.docx4j</groupId>
 			<artifactId>xhtmlrenderer</artifactId><!--  supports xhtml import -->
 			<version>3.0.0</version>
-			<!-- currently itext is required (fonts for width calculations)
-				<exclusions>
-					<exclusion>
-						<groupId>com.lowagie</groupId>
-						<artifactId>itext</artifactId>
-					</exclusion>
-				</exclusions>
-				 -->
 		</dependency>
 
 		<!--  you should use the RI here if you are using eg Java 13, even if compliance is set in your project to 1.8 -->
 		<dependency>
-		  <groupId>org.docx4j</groupId>
-		  <artifactId>docx4j-JAXB-Internal</artifactId>
-			<version>8.1.4</version>
-			<!--  <scope>test</scope>-->
+			<groupId>org.docx4j</groupId>
+			<artifactId>docx4j-JAXB-Internal</artifactId>
+			<version>${docx4j.version}</version>
 		</dependency>
-	 	
+
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
 			<version>1.7.26</version>
 		</dependency>
-		
-<!-- 		
-		<dependency>
-		  <groupId>org.slf4j</groupId>
-		  <artifactId>slf4j-log4j12</artifactId>
-		  <version>1.7.5</version>
-		</dependency>		
- -->
 
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
@@ -360,23 +345,23 @@
 			<version>1.2.3</version>
 		</dependency>
 
-		<!--  logging config files; docx4j.properties -->
 		<dependency>
-			<groupId>org.docx4j</groupId>
-			<artifactId>docx4j-samples-resources</artifactId>
-			<version>8.1.4</version>
+			<groupId>xml-apis</groupId>
+			<artifactId>xml-apis</artifactId>
+			<version>2.0.2</version>
 		</dependency>
 
+		<!--  logging config files; docx4j.properties -->
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<version>4.12</version>
 			<scope>test</scope>
 		</dependency>
-	 	
+
 	</dependencies>
 
-		<profiles> <!--  use -P eg mvn -Psign-artifacts  -->
+	<profiles> <!--  use -P eg mvn -Psign-artifacts  -->
 		<profile>
 			<id>sign-artifacts</id>
 			<build>
@@ -399,5 +384,5 @@
 			</build>
 		</profile>
 
-   	</profiles>
+	</profiles>
 </project>

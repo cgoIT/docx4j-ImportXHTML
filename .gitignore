@@ -1,6 +1,8 @@
 /target/
 /bin/
 /dist/
+/.idea
+*.iml
 .directory
 
 /bin-testOutput/

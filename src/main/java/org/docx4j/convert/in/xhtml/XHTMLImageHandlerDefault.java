@@ -4,6 +4,9 @@ import java.text.MessageFormat;
 import java.util.HashMap;
 
 import org.apache.commons.codec.binary.Base64;
+import org.apache.xmlgraphics.image.loader.ImageInfo;
+import org.apache.xmlgraphics.image.loader.ImageSize;
+import org.docx4j.UnitsOfMeasurement;
 import org.docx4j.dml.wordprocessingDrawing.Inline;
 import org.docx4j.jaxb.Context;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
@@ -137,10 +140,10 @@ public class XHTMLImageHandlerDefault implements XHTMLImageHandler {
                         }
                         inline = imagePart.createImageInline(null, e.getAttribute("alt"), 0, 1, false, maxWidth - (int)excessWidth);
                     } else {
-						inline = imagePart.createImageInline(null, e.getAttribute("alt"), 0, 1, false);
+						inline = imagePart.createImageInline(null, e.getAttribute("alt"), 0, 1, false, maxWidth);
 					}
 				} else {
-					
+
 					if (cx == null) {
 						
 						cx = imagePart.getImageInfo().getSize().getWidthPx() *
