@@ -2005,7 +2005,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
                 getListForRun().getContent().add(run);
 
 				Br br = Context.getWmlObjectFactory().createBr();
-                if (STBrType.PAGE.value().equals(s.getElement().getAttribute("type"))) {
+                if (STBrType.PAGE.value().equals(s.getElement().getAttribute("class"))) {
                 	br.setType(STBrType.PAGE);
 				}
 
