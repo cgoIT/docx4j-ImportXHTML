@@ -86,6 +86,7 @@ import org.docx4j.org.xhtmlrenderer.render.InlineBox;
 import org.docx4j.org.xhtmlrenderer.resource.XMLResource;
 import org.docx4j.wml.Body;
 import org.docx4j.wml.BooleanDefaultTrue;
+import org.docx4j.wml.Br;
 import org.docx4j.wml.CTMarkupRange;
 import org.docx4j.wml.CTSimpleField;
 import org.docx4j.wml.ContentAccessor;
@@ -101,6 +102,7 @@ import org.docx4j.wml.R;
 import org.docx4j.wml.RFonts;
 import org.docx4j.wml.RPr;
 import org.docx4j.wml.RStyle;
+import org.docx4j.wml.STBrType;
 import org.docx4j.wml.Style;
 import org.docx4j.wml.Tbl;
 import org.docx4j.wml.Tc;
@@ -2000,8 +2002,14 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 			} else if (s.getElement().getNodeName().equals("br") ) {
                 
                 R run = Context.getWmlObjectFactory().createR();
-                getListForRun().getContent().add(run);                
-           		run.getContent().add(Context.getWmlObjectFactory().createBr());
+                getListForRun().getContent().add(run);
+
+				Br br = Context.getWmlObjectFactory().createBr();
+                if (STBrType.PAGE.value().equals(s.getElement().getAttribute("type"))) {
+                	br.setType(STBrType.PAGE);
+				}
+
+           		run.getContent().add(br);
             	
             } else {
             	log.debug("InlineBox has no TextNode, so skipping" );
