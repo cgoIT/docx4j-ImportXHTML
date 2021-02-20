@@ -214,18 +214,33 @@ public class TableHelper {
     	// is the w:gridCol val which prob specifies the actual width
     	TblGrid tblGrid = Context.getWmlObjectFactory().createTblGrid();
     	tbl.setTblGrid(tblGrid);
-    	
+
+		// The colPos values are to big for the page width. So get the max width
+		// and adjust the colPos values accordingly
+    	int writableWidthTwips = this.importer.wordMLPackage.getDocumentModel().getSections().get(0).getPageDimensions().getWritableWidthTwips();
+
     	int[] colPos = tableProperties.getColumnPos();
+		int[] effColPos = colPos;
+
+		int maxColPos = colPos[cssTable.numEffCols()];
+    	if (maxColPos > writableWidthTwips) {
+    		effColPos = new int[colPos.length];
+    		effColPos[0] = 0;
+
+    		for (int i = 1; i <= cssTable.numEffCols(); i++) {
+    			effColPos[i] = (int)((double)(colPos[i])/maxColPos * writableWidthTwips);
+			}
+		}
     	
-    	log.debug("setupTblGrid " + cssTable.numEffCols() + "  " + colPos.length);
+    	log.debug("setupTblGrid " + cssTable.numEffCols() + "  " + effColPos.length);
     	
     	for (int i=1; i<=cssTable.numEffCols(); i++) {
     		
     		TblGridCol tblGridCol = Context.getWmlObjectFactory().createTblGridCol();
     		tblGrid.getGridCol().add(tblGridCol);
     		
-    		log.debug("colpos=" + colPos[i]);
-    		tblGridCol.setW( BigInteger.valueOf(colPos[i]-colPos[i-1]) );
+    		log.debug("colpos=" + effColPos[i]);
+    		tblGridCol.setW( BigInteger.valueOf(effColPos[i]-effColPos[i-1]) );
     		
     	}
     	

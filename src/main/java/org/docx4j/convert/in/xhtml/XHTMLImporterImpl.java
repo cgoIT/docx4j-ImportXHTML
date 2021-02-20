@@ -1254,11 +1254,20 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 	            	addImage(blockBox);
 
         	} else if  (e.getNodeName().equals("hr")) {
-            	
-        		this.contentContextStack.peek().getContent().add(
-        				getPforHR());
-	            	
-            } else {
+
+				if (STBrType.PAGE.value().equals(e.getAttribute("class"))) {
+					R run = Context.getWmlObjectFactory().createR();
+					getListForRun().getContent().add(run);
+
+					Br br = Context.getWmlObjectFactory().createBr();
+ 					br.setType(STBrType.PAGE);
+
+					run.getContent().add(br);
+				} else {
+					this.contentContextStack.peek().getContent().add(
+							getPforHR());
+				}
+			} else {
             	
             	log.debug("default handling for " + e.getNodeName());
             	
@@ -1410,8 +1419,10 @@ public class XHTMLImporterImpl implements XHTMLImporter {
     }
     
     private static final String FIGCAPTION_SEQUENCE_ATTRIBUTE_NAME="sequence";
-    private static final String FIGCAPTION_SEQUENCE_ATTRIBUTE_VALUE_DEFAULT="Figure"; 
-    
+    private static final String FIGCAPTION_SEQUENCE_ATTRIBUTE_VALUE_DEFAULT="Figure";
+	private static final String FIGCAPTION_PREFIX_ATTRIBUTE_NAME="captionprefix";
+	private static final String FIGCAPTION_PREFIX_ATTRIBUTE_VALUE_DEFAULT="Figure";
+
     
     
     private Map<String, Integer> sequenceCounters = null;
@@ -1460,19 +1471,25 @@ public class XHTMLImporterImpl implements XHTMLImporter {
     			&& figcaption.getAttribute(FIGCAPTION_SEQUENCE_ATTRIBUTE_NAME).trim().length()>0) {
     		sequenceName = figcaption.getAttribute(FIGCAPTION_SEQUENCE_ATTRIBUTE_NAME);
     	}
+
+    	String prefix = FIGCAPTION_PREFIX_ATTRIBUTE_VALUE_DEFAULT;
+		if (figcaption.getAttribute(FIGCAPTION_PREFIX_ATTRIBUTE_NAME)!=null
+				&& figcaption.getAttribute(FIGCAPTION_PREFIX_ATTRIBUTE_NAME).trim().length()>0) {
+			prefix = figcaption.getAttribute(FIGCAPTION_PREFIX_ATTRIBUTE_NAME);
+		}
     	
     	Integer i = this.getSequenceCounters().get(sequenceName);
     	int count = (i == null ? 0 : i);
     	this.getSequenceCounters().put(sequenceName, ++count);    	
     	
     	
-    	if (!sequenceName.endsWith(" ")) sequenceName +=" "; // adds trailing space
+    	if (!prefix.endsWith(" ")) prefix +=" "; // adds trailing space
     	
     	// The run, "Figure"
     	R figureRun = new R();
     	Text text = Context.getWmlObjectFactory().createText();
     	figureRun.getContent().add(text);
-    	text.setValue(sequenceName);
+    	text.setValue(prefix);
     	text.setSpace("preserve");
     	currentP.getContent().add(figureRun);
     	
@@ -1999,7 +2016,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
         		log.debug("Null element " ); 
 			} else if (s.getElement().getNodeName() == null) {
         		log.debug("Null element nodename " ); 
-			} else if (s.getElement().getNodeName().equals("br") ) {
+			} else if (s.getElement().getNodeName().equals("br")) {
                 
                 R run = Context.getWmlObjectFactory().createR();
                 getListForRun().getContent().add(run);

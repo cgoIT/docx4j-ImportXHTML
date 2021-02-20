@@ -133,7 +133,7 @@ public class XHTMLImageHandlerDefault implements XHTMLImageHandler {
 					
 					if (maxWidth>0) {
 						log.debug("image maxWidth:" + maxWidth + ", table style: " + tableStyle);
-						System.out.println("image maxWidth:" + maxWidth);
+
                         long excessWidth = getTblCellMargins(tableStyle);
                         if(excessWidth > 0) {
                             log.debug("table style margins subtracted (twips): " + excessWidth);
