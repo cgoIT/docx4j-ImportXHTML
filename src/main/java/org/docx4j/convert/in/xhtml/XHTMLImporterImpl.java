@@ -49,9 +49,11 @@ import javax.xml.bind.JAXBElement;
 import javax.xml.bind.JAXBException;
 import javax.xml.transform.Source;
 
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.docx4j.Docx4jProperties;
 import org.docx4j.UnitsOfMeasurement;
 import org.docx4j.XmlUtils;
+import org.docx4j.convert.in.xhtml.renderer.DocxRenderer;
 import org.docx4j.convert.out.html.HtmlCssHelper;
 import org.docx4j.jaxb.Context;
 import org.docx4j.model.PropertyResolver;
@@ -69,21 +71,26 @@ import org.docx4j.openpackaging.parts.WordprocessingML.NumberingDefinitionsPart;
 import org.docx4j.openpackaging.parts.WordprocessingML.StyleDefinitionsPart;
 import org.docx4j.openpackaging.parts.relationships.Namespaces;
 import org.docx4j.openpackaging.parts.relationships.RelationshipsPart;
-import org.docx4j.org.xhtmlrenderer.css.constants.CSSName;
-import org.docx4j.org.xhtmlrenderer.css.constants.IdentValue;
-import org.docx4j.org.xhtmlrenderer.css.style.CalculatedStyle;
-import org.docx4j.org.xhtmlrenderer.css.style.DerivedValue;
-import org.docx4j.org.xhtmlrenderer.css.style.FSDerivedValue;
-import org.docx4j.org.xhtmlrenderer.css.style.derived.LengthValue;
-import org.docx4j.org.xhtmlrenderer.docx.DocxRenderer;
-import org.docx4j.org.xhtmlrenderer.layout.Styleable;
-import org.docx4j.org.xhtmlrenderer.newtable.TableBox;
-import org.docx4j.org.xhtmlrenderer.render.AnonymousBlockBox;
-import org.docx4j.org.xhtmlrenderer.render.BlockBox;
-import org.docx4j.org.xhtmlrenderer.render.Box;
-import org.docx4j.org.xhtmlrenderer.render.BoxDimensions;
-import org.docx4j.org.xhtmlrenderer.render.InlineBox;
-import org.docx4j.org.xhtmlrenderer.resource.XMLResource;
+import com.openhtmltopdf.css.constants.CSSName;
+import com.openhtmltopdf.css.constants.IdentValue;
+import com.openhtmltopdf.css.parser.PropertyValue;
+import com.openhtmltopdf.css.style.CalculatedStyle;
+import com.openhtmltopdf.css.style.DerivedValue;
+import com.openhtmltopdf.css.style.FSDerivedValue;
+import com.openhtmltopdf.css.style.derived.ColorValue;
+import com.openhtmltopdf.css.style.derived.CountersValue;
+import com.openhtmltopdf.css.style.derived.FunctionValue;
+import com.openhtmltopdf.css.style.derived.LengthValue;
+import com.openhtmltopdf.css.style.derived.ListValue;
+import com.openhtmltopdf.css.style.derived.NumberValue;
+import com.openhtmltopdf.css.style.derived.StringValue;
+import com.openhtmltopdf.layout.Styleable;
+import com.openhtmltopdf.newtable.TableBox;
+import com.openhtmltopdf.render.AnonymousBlockBox;
+import com.openhtmltopdf.render.BlockBox;
+import com.openhtmltopdf.render.Box;
+import com.openhtmltopdf.render.InlineBox;
+import com.openhtmltopdf.resource.XMLResource;
 import org.docx4j.wml.Body;
 import org.docx4j.wml.BooleanDefaultTrue;
 import org.docx4j.wml.Br;
@@ -113,7 +120,9 @@ import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
-import org.w3c.dom.css.CSSValue;
+import org.w3c.dom.css.CSSPrimitiveValue;
+//import org.w3c.dom.css.CSSPrimitiveValue;
+//import org.w3c.dom.css.CSSValue;
 import org.xml.sax.InputSource;
 
 /**
@@ -671,7 +680,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
         Document dom;
         try {
         	dom = XMLResource.load(is).getDocument();
-        } catch  ( org.docx4j.org.xhtmlrenderer.util.XRRuntimeException xre) {
+        } catch  ( com.openhtmltopdf.util.XRRuntimeException xre) {
         	// javax.xml.transform.TransformerException te
         	Throwable t = xre.getCause();
         	log.error(t.getMessage(), t);
@@ -711,16 +720,26 @@ public class XHTMLImporterImpl implements XHTMLImporter {
      * @param cssWhiteList
      * @return
      */
-    public Map<String, CSSValue> getCascadedProperties(CalculatedStyle cs) {
+    public Map<String, PropertyValue> getCascadedProperties(CalculatedStyle cs) {
     	
     	// Similar to renderer.getLayoutContext().getSharedContext().getCss().getCascadedPropertiesMap(e)?
     	
     	// or use getStyle().valueByName directly; see TableHelper for example
 
     	
-    	Map<String, CSSValue> cssMap = new HashMap<String, CSSValue>();
+    	Map<String, PropertyValue> cssMap = new HashMap<String, PropertyValue>();
     	
-    	FSDerivedValue[] derivedValues = cs.getDerivedValues();
+    	// Access the private field
+    	FSDerivedValue[] derivedValues = null;
+		try {
+			derivedValues = (FSDerivedValue[])FieldUtils.readField(cs, "_derivedValuesById", true);
+		} catch (IllegalArgumentException e) {
+			// shouldn't happen
+			log.error("Couldn't access private field", e);
+		} catch (IllegalAccessException e) {
+			log.error("Couldn't access private field", e);
+		}
+
         for (int i = 0; i < derivedValues.length; i++) {
         	        	
             CSSName name = CSSName.getByID(i);
@@ -737,23 +756,93 @@ public class XHTMLImporterImpl implements XHTMLImporter {
                         
             FSDerivedValue val = cs.valueByName(name); // walks parents as necessary to get the value
             
-            if (val != null && val instanceof DerivedValue) {    
+        	// An IdentValue represents a string that you can assign to a CSS property,
+        	// where the string is one of several enumerated values. 
+        	// font-size could be a IdentValue (eg medium) or a LengthValue (eg 12px) 
+            
+            if (val == null) {
             	
-            	cssMap.put(name.toString(), ((DerivedValue)val).getCSSPrimitiveValue() );
+            	log.warn("Skipping " +  name.toString() + " .. (null value)" );            	
             	
-            } else if (val != null && val instanceof IdentValue) {
-            	
-            	cssMap.put(name.toString(), ((IdentValue)val).getCSSPrimitiveValue() );
-
-            } else if (val != null && val instanceof LengthValue) {
-            	
-            	cssMap.put(name.toString(), ((LengthValue)val).getCSSPrimitiveValue() );
-            	
-            } else  if (val!=null ) {
-            	
-//            	log.debug("Skipping " +  name.toString() + " .. " + val.getClass().getName() );
             } else {
-//            	log.debug("Skipping " +  name.toString() + " .. (null value)" );            	
+            	
+            	if (log.isDebugEnabled()) {
+            		log.debug(val.getClass().getName() + ": " + name + " = " + val.asString());
+            	}
+            	
+            	if (val instanceof IdentValue) {
+
+		        	// Workaround for docx4j < 8.3, which doesn't handle start|end
+		        	if (name.toString().equals("text-align")
+		        			&& (val.asString().equals("start")
+		        					|| val.asString().equals("end"))) {
+		        		
+						PropertyValue val2; 
+		        		if (val.asString().equals("start")) {
+		        			// Not bidi aware; assume ltr
+		        			val2 = new PropertyValue(CSSPrimitiveValue.CSS_IDENT, "left", "left"); 
+		        		} else {
+		        			val2 = new PropertyValue(CSSPrimitiveValue.CSS_IDENT, "right", "right"); 		        			
+		        		}
+			        	cssMap.put(name.toString(), val2 );
+		        		
+		        	} else {
+            		
+						PropertyValue val2 = new PropertyValue( (IdentValue)val ); 
+		//				PropertyValue val2 = new PropertyValue(CSSPrimitiveValue.CSS_IDENT, val.asString(), val.asString()); 
+			        	cssMap.put(name.toString(), val2 );
+		        	}
+	        	
+	            } else if (val instanceof ColorValue) {
+	            	
+	//            	Object o = ((ColorValue)val).asColor();
+	    			PropertyValue val2 = new PropertyValue( ((ColorValue)val).asColor() ); 
+	            	cssMap.put(name.toString(), val2 );            		
+	
+	            } else if (val instanceof LengthValue) {
+
+	    			PropertyValue val2 = new PropertyValue(getLengthPrimitiveType(val) , val.asFloat(), val.asString()); 
+	            	cssMap.put(name.toString(), val2 );
+	            	
+	            } else if (val instanceof NumberValue) {
+	            	
+	    			PropertyValue val2 = new PropertyValue(((NumberValue)val).getCssSacUnitType() , val.asFloat(), val.asString()); 
+	            	cssMap.put(name.toString(), val2 );
+	
+	            } else if (val instanceof StringValue) {
+	            	
+	    			PropertyValue val2 = new PropertyValue(((StringValue)val).getCssSacUnitType() , val.asString(), val.asString()); 
+	            	cssMap.put(name.toString(), val2 );
+	
+	            } else if (val instanceof ListValue) {
+	            	
+	    			PropertyValue val2 = new PropertyValue( ((ListValue)val).getValues() ); 
+	            	cssMap.put(name.toString(), val2 );
+	
+	            } else if (val instanceof CountersValue) {
+	            	
+	            	boolean unused = false;
+	    			PropertyValue val2 = new PropertyValue( ((CountersValue)val).getValues(), unused ); 
+	            	cssMap.put(name.toString(), val2 );
+	
+	            } else if (val instanceof FunctionValue) {
+	            	
+	    			PropertyValue val2 = new PropertyValue( ((FunctionValue)val).getFunction() ); 
+	            	cssMap.put(name.toString(), val2 );
+	            	
+	            }  else 
+	            	if (val instanceof DerivedValue) {   
+	            		
+	            	// We should've handled all known types of abstract class DerivedValue above!
+	            	log.warn("TODO handle DerivedValue type " +  val.getClass().getName() 
+	            			+ " with name  " + name + " = " + val.asString());
+	    			PropertyValue val2 = new PropertyValue( ((DerivedValue)val).getCssSacUnitType() , val.asString(), val.asString()); 
+	            	cssMap.put(name.toString(), val2 );
+            	
+	            } else  {
+	            	
+	            	log.warn("TODO Skipping " +  name.toString() + " .. " + val.getClass().getName() );
+	            }
             }
         }
     	
@@ -762,7 +851,22 @@ public class XHTMLImporterImpl implements XHTMLImporter {
     }
     
 
-    
+    public static short getLengthPrimitiveType(FSDerivedValue val) {
+    	
+    	if (val instanceof LengthValue) {
+
+        	// Access the private field
+        	short _lengthPrimitiveType = ((LengthValue)val).getCssSacUnitType(); 
+    		try {
+    			return (short)FieldUtils.readField(val, "_lengthPrimitiveType", true);
+    		} catch (Exception e) {
+    			log.error("Couldn't access private field", e);
+        		throw new RuntimeException(e.getMessage(), e);
+    		}
+    	} else {
+    		throw new RuntimeException("Unexpected type " + val.getClass().getName());
+    	}
+    }
     
     /**
      * The Block level elements that our content may go into, ie
@@ -855,18 +959,18 @@ public class XHTMLImporterImpl implements XHTMLImporter {
         	// Shouldn't happen
             log.debug("<NULL>");
         } else {            
-            log.debug("BB"  + "<" + e.getNodeName() + " " + box.getStyle().toStringMine() );
-            log.debug(box.getStyle().getDisplayMine() );
+//            log.debug("BB"  + "<" + e.getNodeName() + " " + box.getStyle().toStringMine() );
+            log.debug(box.getStyle().getStringProperty(CSSName.DISPLAY) );
 //                log.debug(box.getElement().getAttribute("class"));            	
         }
         
         // bookmark start?
         CTMarkupRange markupRangeForID = null;
-        if (box instanceof org.docx4j.org.xhtmlrenderer.newtable.TableSectionBox) {
+        if (box instanceof com.openhtmltopdf.newtable.TableSectionBox) {
         	// ignore, since <table id = ..
         	// generates TableBox<table and TableSectionBox<table
         	// but we only want a single bookmark
-        } else if(box instanceof org.docx4j.org.xhtmlrenderer.newtable.TableBox) {
+        } else if(box instanceof com.openhtmltopdf.newtable.TableBox) {
 
         	// null P, so it bookmark is a P sibling
         	markupRangeForID = bookmarkHelper.anchorToBookmark(e, bookmarkNamePrefix, 
@@ -879,14 +983,14 @@ public class XHTMLImporterImpl implements XHTMLImporter {
         }
         
         if (markupRangeForID!=null) {
-            log.debug("Added bookmark for "+ box.getClass().getName()  + "<" + e.getNodeName() + " " + box.getStyle().toStringMine() );
+            log.debug("Added bookmark for "+ box.getClass().getName()  + "<" + e.getNodeName() );//+ " " + box.getStyle().toStringMine() );
         }
         
         // Don't add a new paragraph if this BlockBox is display: inline
         if (e!=null) {
             
         	//Map cssMap = styleReference.getCascadedPropertiesMap(e);
-            Map<String, CSSValue> cssMap = getCascadedProperties(box.getStyle());
+            Map<String, PropertyValue> cssMap = getCascadedProperties(box.getStyle());
         	
         	/* Sometimes, when it is display: inline, the following is not set:
             	CSSValue cssValue = (CSSValue)cssMap.get("display");
@@ -914,7 +1018,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
             	 * 
             	 */
             	if (/* its a block (the inline case is ok; list-item is TBD) */
-            			box.getStyle().getDisplayMine().equals("block")
+            			box.getStyle().getStringProperty(CSSName.DISPLAY).equals("block")
             			
             		/* and we have an inherited definition */
             			&& this.getCurrentParagraph(false)!=null
@@ -936,7 +1040,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
             		
             	}
             	
-            } else if (box.getStyle().getDisplayMine().equals("inline") ) {
+            } else if (box.getStyle().getStringProperty(CSSName.DISPLAY).equals("inline") ) {
         		
 //                	// Don't add a paragraph for this, unless ..
 //                	if (currentP==null) {
@@ -951,7 +1055,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
         		listHelper.pushListStack(blockBox);
         		
             	
-        	} else if (box instanceof org.docx4j.org.xhtmlrenderer.newtable.TableSectionBox) {
+        	} else if (box instanceof com.openhtmltopdf.newtable.TableSectionBox) {
             	// nb, both TableBox and TableSectionBox 
             	// have node name 'table' (or can have),
         		// so this else clause is before the TableBox one,
@@ -964,7 +1068,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
         		
         		// TODO: give effect to this CSS
 
-        	} else if (box instanceof org.docx4j.org.xhtmlrenderer.newtable.TableBox)  {
+        	} else if (box instanceof com.openhtmltopdf.newtable.TableBox)  {
             	
         		log.debug(".. processing table");  // what happened to <colgroup><col style="width: 2.47in;" /><col style="width: 2.47in;" /> 
         		
@@ -1012,7 +1116,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 	            pushBlockStack(tbl);
 	            mustPop = true;
 	            
-	            TableBox tableBox = (org.docx4j.org.xhtmlrenderer.newtable.TableBox)box;
+	            TableBox tableBox = (com.openhtmltopdf.newtable.TableBox)box;
 	            
 	    		tableProperties = new TableProperties();
 	    		tableProperties.setTableBox(tableBox);
@@ -1067,7 +1171,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 	            mustPop = true;
 	            
         		
-        	} else if (box instanceof org.docx4j.org.xhtmlrenderer.newtable.TableRowBox) {
+        	} else if (box instanceof com.openhtmltopdf.newtable.TableRowBox) {
         		
         		// eg <tr color: #000000; background-color: transparent; background-image: none; background-repeat: repeat; background-attachment: scroll; background-position: [0%, 0%]; background-size: [auto, auto]; border-collapse: collapse; -fs-border-spacing-horizontal: 0; -fs-border-spacing-vertical: 0; -fs-font-metric-src: none; -fs-keep-with-inline: auto; -fs-page-width: auto; -fs-page-height: auto; -fs-page-sequence: auto; -fs-pdf-font-embed: auto; -fs-pdf-font-encoding: Cp1252; -fs-page-orientation: auto; -fs-table-paginate: auto; -fs-text-decoration-extent: line; bottom: auto; caption-side: top; clear: none; ; content: normal; counter-increment: none; counter-reset: none; cursor: auto; ; display: table-row; empty-cells: show; float: none; font-style: normal; font-variant: normal; font-weight: normal; font-size: medium; line-height: normal; font-family: serif; -fs-table-cell-colspan: 1; -fs-table-cell-rowspan: 1; height: auto; left: auto; letter-spacing: normal; list-style-type: disc; list-style-position: outside; list-style-image: none; max-height: none; max-width: none; min-height: 0; min-width: 0; orphans: 2; ; ; ; overflow: visible; page: auto; page-break-after: auto; page-break-before: auto; page-break-inside: auto; position: static; ; right: auto; src: none; table-layout: auto; text-align: left; text-decoration: none; text-indent: 0; text-transform: none; top: auto; ; vertical-align: top; visibility: visible; white-space: normal; word-wrap: normal; widows: 2; width: auto; word-spacing: normal; z-index: auto; border-top-color: #000000; border-right-color: #000000; border-bottom-color: #000000; border-left-color: #000000; border-top-style: none; border-right-style: none; border-bottom-style: none; border-left-style: none; border-top-width: 2px; border-right-width: 2px; border-bottom-width: 2px; border-left-width: 2px; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0;
         		
@@ -1084,16 +1188,16 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 	            pushBlockStack(tr);
 	            mustPop = true;
         		
-	            tableHelper.setupTrPr((org.docx4j.org.xhtmlrenderer.newtable.TableRowBox)box, tr); // does nothing at present
+	            tableHelper.setupTrPr((com.openhtmltopdf.newtable.TableRowBox)box, tr); // does nothing at present
         		
-        	} else if (box instanceof org.docx4j.org.xhtmlrenderer.newtable.TableCellBox) {
+        	} else if (box instanceof com.openhtmltopdf.newtable.TableCellBox) {
         		            		
         		log.debug(".. processing <td");            		
         		// eg <td color: #000000; background-color: transparent; background-image: none; background-repeat: repeat; background-attachment: scroll; background-position: [0%, 0%]; background-size: [auto, auto]; border-collapse: collapse; -fs-border-spacing-horizontal: 0; -fs-border-spacing-vertical: 0; -fs-font-metric-src: none; -fs-keep-with-inline: auto; -fs-page-width: auto; -fs-page-height: auto; -fs-page-sequence: auto; -fs-pdf-font-embed: auto; -fs-pdf-font-encoding: Cp1252; -fs-page-orientation: auto; -fs-table-paginate: auto; -fs-text-decoration-extent: line; bottom: auto; caption-side: top; clear: none; ; content: normal; counter-increment: none; counter-reset: none; cursor: auto; ; display: table-row; empty-cells: show; float: none; font-style: normal; font-variant: normal; font-weight: normal; font-size: medium; line-height: normal; font-family: serif; -fs-table-cell-colspan: 1; -fs-table-cell-rowspan: 1; height: auto; left: auto; letter-spacing: normal; list-style-type: disc; list-style-position: outside; list-style-image: none; max-height: none; max-width: none; min-height: 0; min-width: 0; orphans: 2; ; ; ; overflow: visible; page: auto; page-break-after: auto; page-break-before: auto; page-break-inside: auto; position: static; ; right: auto; src: none; table-layout: auto; text-align: left; text-decoration: none; text-indent: 0; text-transform: none; top: auto; ; vertical-align: top; visibility: visible; white-space: normal; word-wrap: normal; widows: 2; width: auto; word-spacing: normal; z-index: auto; border-top-color: #000000; border-right-color: #000000; border-bottom-color: #000000; border-left-color: #000000; border-top-style: none; border-right-style: none; border-bottom-style: none; border-left-style: none; border-top-width: 2px; border-right-width: 2px; border-bottom-width: 2px; border-left-width: 2px; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0;
 
         		ContentAccessor trContext = contentContextStack.peek();
 
-        		org.docx4j.org.xhtmlrenderer.newtable.TableCellBox tcb = (org.docx4j.org.xhtmlrenderer.newtable.TableCellBox)box;
+        		com.openhtmltopdf.newtable.TableCellBox tcb = (com.openhtmltopdf.newtable.TableCellBox)box;
 	            
         		// rowspan support: vertically merged cells are
         		// represented as a top cell containing the actual content with a vMerge tag with "restart" attribute 
@@ -1124,7 +1228,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 				            DON"T TRIGGER THIS LINE
 				        </li>
         			 */
-        			&& !(blockBox instanceof org.docx4j.org.xhtmlrenderer.render.AnonymousBlockBox)) {
+        			&& !(blockBox instanceof com.openhtmltopdf.render.AnonymousBlockBox)) {
 
 	            // Paragraph level styling
             	//P currentP = this.getCurrentParagraph(true);
@@ -1507,7 +1611,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
     	simpleField.getContent().add(resultRun);
     }
 
-    protected PPr getPPr(BlockBox blockBox, Map<String, CSSValue> cssMap) {
+    protected PPr getPPr(BlockBox blockBox, Map<String, PropertyValue> cssMap) {
     	
         PPr pPr =  Context.getWmlObjectFactory().createPPr();
         populatePPr(pPr, blockBox, cssMap);
@@ -1554,7 +1658,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 	    return ((rtl/ltr)>0.5);    	
     }
     
-    protected void populatePPr(PPr pPr, Styleable blockBox, Map<String, CSSValue> cssMap) {
+    protected void populatePPr(PPr pPr, Styleable blockBox, Map<String, PropertyValue> cssMap) {
     	
         if (paragraphFormatting.equals(FormattingOption.IGNORE_CLASS)) {
     		addParagraphProperties(pPr, blockBox, cssMap );
@@ -1769,6 +1873,11 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 	
     private void  processInlineBox( InlineBox inlineBox) {
     	
+    	if (inlineBox.getPseudoElementOrClass()!=null) {
+    		log.debug("Ignoring Pseudo");
+    		return;
+    	}
+    	
         // Doesn't extend box
         Styleable s = inlineBox;
         
@@ -1821,7 +1930,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
     		
     	} 
         
-        Map<String, CSSValue> cssMap = getCascadedProperties(s.getStyle());
+        Map<String, PropertyValue> cssMap = getCascadedProperties(s.getStyle());
 //        Map cssMap = styleReference.getCascadedPropertiesMap(s.getElement());
         
         
@@ -1987,9 +2096,9 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 //	            		addParagraphProperties( cssMap ));
 //            }	            
         }
-        if (s.getStyle()!=null) {
-            debug +=  " " + s.getStyle().toStringMine();
-        }
+//        if (s.getStyle()!=null) {
+//            debug +=  " " + s.getStyle().toStringMine();
+//        }
         
         
         log.debug(debug );
@@ -2000,15 +2109,28 @@ public class XHTMLImporterImpl implements XHTMLImporter {
     }
 
 	private void processInlineBoxContent(InlineBox inlineBox, Styleable s,
-			Map<String, CSSValue> cssMap) {
+			Map<String, PropertyValue> cssMap) {
 				
         
         // bookmark start?
         CTMarkupRange markupRangeForID = bookmarkHelper.anchorToBookmark(inlineBox.getElement(), bookmarkNamePrefix, 
         		getCurrentParagraph(false), this.contentContextStack.peek());
 		
-		
-		if (inlineBox.getTextNode()==null) {
+        if (s!=null && s.getElement()!=null && s.getElement().getNodeName().equals("br") ) {
+
+			R run = Context.getWmlObjectFactory().createR();
+			getListForRun().getContent().add(run);
+
+			Br br = Context.getWmlObjectFactory().createBr();
+			if (STBrType.PAGE.value().equals(s.getElement().getAttribute("class"))) {
+				br.setType(STBrType.PAGE);
+			}
+
+			run.getContent().add(br);
+        } else if (inlineBox.getText()==null
+        		|| inlineBox.getText().length()==0
+        		) {
+        	// Doesn't happen anymore, now we're using openhtmltopdf?
 			
 			if (s == null) {
         		log.debug("Null Styleable" ); 
@@ -2016,17 +2138,6 @@ public class XHTMLImporterImpl implements XHTMLImporter {
         		log.debug("Null element " ); 
 			} else if (s.getElement().getNodeName() == null) {
         		log.debug("Null element nodename " ); 
-			} else if (s.getElement().getNodeName().equals("br")) {
-                
-                R run = Context.getWmlObjectFactory().createR();
-                getListForRun().getContent().add(run);
-
-				Br br = Context.getWmlObjectFactory().createBr();
-                if (STBrType.PAGE.value().equals(s.getElement().getAttribute("class"))) {
-                	br.setType(STBrType.PAGE);
-				}
-
-           		run.getContent().add(br);
             	
             } else {
             	log.debug("InlineBox has no TextNode, so skipping" );
@@ -2037,9 +2148,9 @@ public class XHTMLImporterImpl implements XHTMLImporter {
             }
             
         } else  {
-            log.debug( inlineBox.getTextNode().getTextContent() );  // don't use .getText()
+            log.warn( "\n\n"+inlineBox.getText() );  // don't use .getText()
 
-            String theText = inlineBox.getTextNode().getTextContent(); 
+            String theText = inlineBox.getText(); 
             log.debug("Processing " + theText);
             
             String cssClass = getClassAttribute(s.getElement());
@@ -2081,7 +2192,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 	 * @param cssMap
 	 * @param theText
 	 */
-	private void addRuns( String cssClass, Map<String, CSSValue> cssMap, String theText) {
+	private void addRuns( String cssClass, Map<String, PropertyValue> cssMap, String theText) {
 		
 //    	System.out.println(theText);
 		
@@ -2131,7 +2242,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 		return ((x & 1) == 0 ) ;
 	}
 	
-	private void addRun( String cssClass, Map<String, CSSValue> cssMap, String theText, boolean isRTL) {
+	private void addRun( String cssClass, Map<String, PropertyValue> cssMap, String theText, boolean isRTL) {
 		
 		R run = Context.getWmlObjectFactory().createR();
 		Text text = Context.getWmlObjectFactory().createText();
@@ -2154,7 +2265,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
         }
 	}
 	
-	private void formatRPr(RPr rPr, String cssClass, Map<String, CSSValue> cssMap) {
+	private void formatRPr(RPr rPr, String cssClass, Map<String, PropertyValue> cssMap) {
 
 		//addRunProperties(rPr, cssMap );  // ?????
 		
@@ -2196,7 +2307,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
     	} 
 				
 		// Font is handled separately.  TODO: review this
-		CSSValue fontFamily = cssMap.get("font-family");
+        PropertyValue fontFamily = cssMap.get("font-family");
 		FontHandler.setRFont(fontFamily, rPr );
 
 	}
@@ -2208,7 +2319,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
     }
     
 	
-    private void addParagraphProperties(PPr pPr, Styleable styleable, Map<String, CSSValue> cssMap) {
+    private void addParagraphProperties(PPr pPr, Styleable styleable, Map<String, PropertyValue> cssMap) {
     	// NB, not invoked in CLASS_TO_STYLE_ONLY case
     	
 //    	log.debug("BEFORE " + XmlUtils.marshaltoString(pPr, true, true));
@@ -2216,16 +2327,16 @@ public class XHTMLImporterImpl implements XHTMLImporter {
         for (Object o : cssMap.keySet()) {
         	
         	String cssName = (String)o;
-        	CSSValue cssValue = (CSSValue)cssMap.get(cssName);
+        	PropertyValue cssValue = cssMap.get(cssName);
         	
-        	Property p = PropertyFactory.createPropertyFromCssName(cssName, cssValue);
+        	Property p = PropertyFactory.createPropertyFromCssName(cssName, new DomCssValueAdaptor(cssValue));
         	
         	if (p!=null) {
 	        	if (p instanceof AbstractParagraphProperty) {        		
 	        		((AbstractParagraphProperty)p).set(pPr);
 	        	} else {
 	        	    // try specific method
-	        	    p = PropertyFactory.createPropertyFromCssNameForPPr(cssName, cssValue);
+	        	    p = PropertyFactory.createPropertyFromCssNameForPPr(cssName,  new DomCssValueAdaptor(cssValue));
 	        	    if (p!=null) {
 	        	        if (p instanceof AbstractParagraphProperty) {               
 	        	            ((AbstractParagraphProperty)p).set(pPr);
@@ -2371,7 +2482,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 		
 		while (o !=null
 				&& o instanceof BlockBox 
-				&& !(o instanceof org.docx4j.org.xhtmlrenderer.newtable.TableCellBox) 
+				&& !(o instanceof com.openhtmltopdf.newtable.TableCellBox) 
 				&& !( ((BlockBox)o).getElement()!=null && ((BlockBox)o).getElement().getLocalName().equals("li"))
 				) {
 			
@@ -2419,7 +2530,8 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 				&& bb.getStyle().valueByName(CSSName.PADDING_LEFT) instanceof LengthValue) {
 				
 			LengthValue padding = (LengthValue)bb.getStyle().valueByName(CSSName.PADDING_LEFT);
-			paddingI +=Indent.getTwip(padding.getCSSPrimitiveValue());
+			PropertyValue val = new PropertyValue(getLengthPrimitiveType(padding) , padding.asFloat(), padding.asString()); 
+			paddingI +=Indent.getTwip(new DomCssValueAdaptor( val));
 		}
 //		log.debug("+padding-left: " + totalPadding);
 
@@ -2427,7 +2539,8 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 				&& bb.getStyle().valueByName(CSSName.MARGIN_LEFT) instanceof LengthValue) {
 			
 			LengthValue margin = (LengthValue)bb.getStyle().valueByName(CSSName.MARGIN_LEFT);
-			paddingI +=Indent.getTwip(margin.getCSSPrimitiveValue());
+			PropertyValue val = new PropertyValue(getLengthPrimitiveType(margin) , margin.asFloat(), margin.asString()); 
+			paddingI +=Indent.getTwip(new DomCssValueAdaptor(val));
 		}
 //		log.debug("+margin-left: " + totalPadding);
 		
@@ -2455,9 +2568,9 @@ public class XHTMLImporterImpl implements XHTMLImporter {
         for (Object o : cssMap.keySet()) {
         	
         	String cssName = (String)o;
-        	CSSValue cssValue = (CSSValue)cssMap.get(cssName);
+        	PropertyValue cssValue = (PropertyValue)cssMap.get(cssName);
         	
-        	Property runProp = PropertyFactory.createPropertyFromCssName(cssName, cssValue);
+        	Property runProp = PropertyFactory.createPropertyFromCssName(cssName, new DomCssValueAdaptor(cssValue));
         	
         	if (runProp!=null) {
 	        	if (runProp instanceof AbstractRunProperty) {  
