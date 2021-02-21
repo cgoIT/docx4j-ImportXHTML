@@ -63,7 +63,7 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<docx4j.version>8.2.1</docx4j.version>
+		<docx4j.version>8.2.8</docx4j.version>
 	</properties>
 
 	<build>
