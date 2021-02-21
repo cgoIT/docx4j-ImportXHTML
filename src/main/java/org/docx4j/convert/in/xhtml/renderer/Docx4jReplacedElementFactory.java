@@ -19,9 +19,7 @@
  */
 package org.docx4j.convert.in.xhtml.renderer;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -31,7 +29,6 @@ import com.openhtmltopdf.extend.ReplacedElementFactory;
 import com.openhtmltopdf.extend.UserAgentCallback;
 import com.openhtmltopdf.layout.LayoutContext;
 import com.openhtmltopdf.render.BlockBox;
-//import com.openhtmltopdf.simple.extend.FormSubmissionListener;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
@@ -57,7 +54,7 @@ public class Docx4jReplacedElementFactory implements ReplacedElementFactory {
 			FSImage fsImage = uac.getImageResource(e.getAttribute("src")).getImage();
 			if (fsImage != null) {
 				if (cssWidth != -1 || cssHeight != -1) {
-					fsImage.scale(cssWidth, cssHeight);
+					fsImage.scale(cssWidth / c.getDotsPerPixel(), cssHeight / c.getDotsPerPixel());
 				}
 				return null; //new ITextImageElement(fsImage);
 			}
