@@ -2256,13 +2256,17 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 		getListForRun().getContent().add(run);
 		
 		// Run level styling
-        RPr rPr =  Context.getWmlObjectFactory().createRPr();
-        run.setRPr(rPr);
-        formatRPr(rPr, cssClass, cssMap);
-        
-        if (isRTL) {
-        	rPr.setRtl(new BooleanDefaultTrue());
-        }
+		if (this.getCurrentParagraph(false) == null ||
+				this.getCurrentParagraph(false).getPPr() == null ||
+				this.getCurrentParagraph(false).getPPr().getPStyle() == null) {
+			RPr rPr =  Context.getWmlObjectFactory().createRPr();
+			run.setRPr(rPr);
+			formatRPr(rPr, cssClass, cssMap);
+
+			if (isRTL) {
+				rPr.setRtl(new BooleanDefaultTrue());
+			}
+		}
 	}
 	
 	private void formatRPr(RPr rPr, String cssClass, Map<String, PropertyValue> cssMap) {
@@ -2300,6 +2304,7 @@ public class XHTMLImporterImpl implements XHTMLImporter {
             		}
         		}
         	}
+
 			if (runFormatting.equals(FormattingOption.CLASS_PLUS_OTHER)) {
 				addRunProperties(rPr, cssMap );
 			}
@@ -2308,7 +2313,11 @@ public class XHTMLImporterImpl implements XHTMLImporter {
 				
 		// Font is handled separately.  TODO: review this
         PropertyValue fontFamily = cssMap.get("font-family");
-		FontHandler.setRFont(fontFamily, rPr );
+
+        // TODO: review this if we could skip this if font-family is serif
+		if (fontFamily != null && !fontFamily.getCssText().equals("serif")) {
+			FontHandler.setRFont(fontFamily, rPr);
+		}
 
 	}
 	
